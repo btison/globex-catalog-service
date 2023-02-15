@@ -1,9 +1,5 @@
 package com.redhat.coolstore.service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import com.redhat.coolstore.client.InventoryClient;
 import com.redhat.coolstore.model.Product;
 import org.json.JSONArray;
@@ -12,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 public class CatalogService {
@@ -41,13 +41,7 @@ public class CatalogService {
     public List<Product> readAll(boolean inventory) {
         List<Product> productList = repository.readAll();
         if (inventory) {
-            productList.forEach(p -> {
-                JSONArray jsonArray = new JSONArray(this.inventoryClient.getInventoryStatus(p.getItemId()));
-                List<String> quantity = IntStream.range(0, jsonArray.length())
-                        .mapToObj(index -> ((JSONObject) jsonArray.get(index))
-                                .optString("quantity")).collect(Collectors.toList());
-                p.setQuantity(Integer.parseInt(quantity.get(0)));
-            });
+            addInventory(productList);
         }
         return productList;
     }
@@ -55,13 +49,7 @@ public class CatalogService {
     public Page<Product> readAll(Pageable page, boolean inventory) {
         Page<Product> productPage = repository.readAll(page);
         if (inventory) {
-            productPage.forEach(p -> {
-                JSONArray jsonArray = new JSONArray(this.inventoryClient.getInventoryStatus(p.getItemId()));
-                List<String> quantity = IntStream.range(0, jsonArray.length())
-                        .mapToObj(index -> ((JSONObject) jsonArray.get(index))
-                                .optString("quantity")).collect(Collectors.toList());
-                p.setQuantity(Integer.parseInt(quantity.get(0)));
-            });
+            addInventory(productPage);
         }
         return productPage;
     }
@@ -69,14 +57,26 @@ public class CatalogService {
     public List<Product> readByIds(List<String> ids, boolean inventory) {
         List<Product> productList = repository.findByIdList(ids);
         if (inventory) {
-            productList.forEach(p -> {
-                JSONArray jsonArray = new JSONArray(this.inventoryClient.getInventoryStatus(p.getItemId()));
-                List<String> quantity = IntStream.range(0, jsonArray.length())
-                        .mapToObj(index -> ((JSONObject) jsonArray.get(index))
-                                .optString("quantity")).collect(Collectors.toList());
-                p.setQuantity(Integer.parseInt(quantity.get(0)));
-            });;
+            addInventory(productList);
         }
         return productList;
+    }
+
+    public List<Product> readByCategories(List<String> categories, boolean inventory) {
+        List<Product> productList = repository.findByCategoryList(categories);
+        if (inventory) {
+            addInventory(productList);
+        }
+        return productList;
+    }
+
+    private void addInventory(Iterable<Product> productList) {
+        productList.forEach(p -> {
+            JSONArray jsonArray = new JSONArray(this.inventoryClient.getInventoryStatus(p.getItemId()));
+            List<String> quantity = IntStream.range(0, jsonArray.length())
+                    .mapToObj(index -> ((JSONObject) jsonArray.get(index))
+                            .optString("quantity")).collect(Collectors.toList());
+            p.setQuantity(Integer.parseInt(quantity.get(0)));
+        });
     }
 }

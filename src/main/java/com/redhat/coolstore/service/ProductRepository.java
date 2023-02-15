@@ -1,8 +1,5 @@
 package com.redhat.coolstore.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.redhat.coolstore.model.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -12,6 +9,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository
 public class ProductRepository {
@@ -50,6 +51,19 @@ public class ProductRepository {
         StringBuilder sb = new StringBuilder();
         ids.forEach(id -> sb.append("'").append(id).append("'").append(","));
         return jdbcTemplate.query("SELECT * FROM catalog WHERE itemId in (" + sb.substring(0,sb.length() -1) + ")", rowMapper);
+    }
+
+    public List<Product> findByCategoryList(List<String> categories) {
+        if (categories.isEmpty()) {
+            return new ArrayList<>();
+        }
+        StringBuilder sb = new StringBuilder();
+        categories.forEach(cat -> sb.append("'").append(cat.toLowerCase()).append("'").append(","));
+        return jdbcTemplate.query("SELECT * FROM catalog " +
+                "JOIN category_catalog ON catalog.itemId = category_catalog.itemId " +
+                "JOIN category ON category_catalog.categoryId = category.categoryId " +
+                "WHERE category.category IN (" + sb.substring(0,sb.length() -1) + ");", rowMapper)
+                .stream().distinct().collect(Collectors.toList());
     }
 
 }
